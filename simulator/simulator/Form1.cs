@@ -44,10 +44,5 @@ namespace simulator
             if(_sim != null)
                 _sim.CancelAsync();
         }
-
-        private void numericUpDown1_ValueChanged(object sender, EventArgs e)
-        {
-
-        }
     }
 }

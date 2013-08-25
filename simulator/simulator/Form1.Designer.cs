@@ -41,6 +41,11 @@
             // numDaysOfHourlies
             // 
             this.numDaysOfHourlies.Location = new System.Drawing.Point(120, 14);
+            this.numDaysOfHourlies.Maximum = new decimal(new int[] {
+            9,
+            0,
+            0,
+            0});
             this.numDaysOfHourlies.Name = "numDaysOfHourlies";
             this.numDaysOfHourlies.Size = new System.Drawing.Size(41, 20);
             this.numDaysOfHourlies.TabIndex = 0;
@@ -95,16 +100,25 @@
             // numBackupsPerHour
             // 
             this.numBackupsPerHour.Location = new System.Drawing.Point(281, 16);
+            this.numBackupsPerHour.Maximum = new decimal(new int[] {
+            4,
+            0,
+            0,
+            0});
+            this.numBackupsPerHour.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
             this.numBackupsPerHour.Name = "numBackupsPerHour";
             this.numBackupsPerHour.Size = new System.Drawing.Size(41, 20);
             this.numBackupsPerHour.TabIndex = 4;
             this.numBackupsPerHour.Tag = "";
             this.numBackupsPerHour.Value = new decimal(new int[] {
-            3,
+            1,
             0,
             0,
             0});
-            this.numBackupsPerHour.ValueChanged += new System.EventHandler(this.numericUpDown1_ValueChanged);
             // 
             // Form1
             // 

@@ -13,7 +13,8 @@ namespace simulator
     {
         private int _numDaysOfHourlies;
         private double _minutesBetweenBackups;
-
+        private int _columnsPerDay;
+       
         private Graphics _graphicsObj;
         private ImageChain _chain;
 
@@ -32,11 +33,15 @@ namespace simulator
         private static int THICKNESS = 4;
         private static int GAP = 2;
 
+        private static int MAX_ROWS = 24;
+
+
         internal IncrementalSimulator(Graphics graphicsObj, int numDaysOfHourlies, int numBackupsPerHour)
         {
             _graphicsObj = graphicsObj;
             _numDaysOfHourlies = numDaysOfHourlies;
             _minutesBetweenBackups = 60 / numBackupsPerHour;
+            _columnsPerDay = numBackupsPerHour;  // since we show 24 in a column...
 
             this.DoWork += Simulate;
         }
@@ -55,19 +60,25 @@ namespace simulator
             while (true)
             {
                 i++;
-                Thread.Sleep(200);
 
                 if (this.CancellationPending)
                     return;
 
-                DrawChain(startTime, currentTime);
+                DrawImageDot(startTime, _chain.First.Value);
+                
+                Thread.Sleep(200);
 
+                if (this.CancellationPending)
+                    return;
+                
                 previousTime = currentTime;
                 currentTime = currentTime.AddMinutes(_minutesBetweenBackups);
 
                 if (previousTime.Day != currentTime.Day)
                 {
+                    // TODO: move lines over
                     // TODO: do rollup
+                    Console.WriteLine("end of the day");
                 }
 
                 _chain.AddIncrementalImage(_minutesBetweenBackups);
@@ -75,25 +86,29 @@ namespace simulator
                 if (i % 24 == 0)
                 {
                     Console.WriteLine("too many iterations");
-                    return;
                 }
             }
         }
 
-        private void DrawChain(DateTime startTime, DateTime currentTime)
-        {           
+        private void DrawChainDots(DateTime startTime, DateTime currentTime)
+        {   
             foreach( Image img in _chain) {
-                Rectangle newDot = ComputeRectangleForImageFromTime(img, startTime);
-                
-                // draw current dot
-                if (img.Type == ImageType.Base)
-                {
-                    _graphicsObj.DrawEllipse(redPen, newDot);
-                }
-                else if (img.Type == ImageType.Incremental)
-                {
-                    _graphicsObj.DrawEllipse(bluePen, newDot);
-                }
+                DrawImageDot(startTime, img);
+            }
+        }
+
+        private void DrawImageDot(DateTime startTime, Image img)
+        {
+            Rectangle newDot = ComputeRectangleForImageFromTime(img, startTime);
+
+            // draw current dot
+            if (img.Type == ImageType.Base)
+            {
+                _graphicsObj.DrawEllipse(redPen, newDot);
+            }
+            else if (img.Type == ImageType.Incremental)
+            {
+                _graphicsObj.DrawEllipse(bluePen, newDot);
             }
         }
 
@@ -102,15 +117,40 @@ namespace simulator
         {
             // locate first image's circle  
             int left = LEFT_EDGE + 4 * THICKNESS;
-            int top = TOP_EDGE + HEIGHT - 4 * THICKNESS; 
+            int top = TOP_EDGE + HEIGHT - 4 * THICKNESS;
 
             // adjust for current image
-            var deltaTimeSpan = img.ModifiedTime - startTime;
-            int deltaCount = (int) (deltaTimeSpan.TotalMinutes / _minutesBetweenBackups);
-            top = top - (deltaCount * 2 * (THICKNESS + GAP));
+            int col, row;
+            CalculateDotPositionFromTime(img, startTime, out col, out row);
+            left = left + col * 2 * (THICKNESS + GAP);
+            top = top - (row * 2 * (THICKNESS + GAP));
 
             var rect = new Rectangle(left, top, THICKNESS, THICKNESS);
             return rect;
+        }
+
+        private void CalculateDotPositionFromTime(Image img, DateTime startTime, out int col, out int row)
+        {
+            TimeSpan deltaTimeSpan;
+            if (img.ModifiedTime.Year == startTime.Year &&
+                img.ModifiedTime.Month == startTime.Month &&
+                img.ModifiedTime.Day == startTime.Day)
+            {
+                deltaTimeSpan = img.ModifiedTime - startTime;
+            }
+            else
+            {
+                deltaTimeSpan = new TimeSpan(
+                    img.ModifiedTime.Hour,
+                    img.ModifiedTime.Minute,
+                    img.ModifiedTime.Second);
+            }
+
+            var hour = deltaTimeSpan.TotalMinutes / 60;
+            col = (int)_columnsPerDay - 1 - (int)(hour / (24 / _columnsPerDay));
+
+            int deltaCount = (int)(deltaTimeSpan.TotalMinutes / _minutesBetweenBackups);
+            row = deltaCount % MAX_ROWS;
         }
 
         private void DrawBackground()
@@ -122,11 +162,10 @@ namespace simulator
             _graphicsObj.DrawLine(blackPen, 
                 LEFT_EDGE - 2 * THICKNESS, HEIGHT + TOP_EDGE,
                 WIDTH + LEFT_EDGE, HEIGHT + TOP_EDGE);
-            
-            // label axis - "now"
             _graphicsObj.DrawString("now", font, brush, 
                 LEFT_EDGE - 3 * THICKNESS, 
                 TOP_EDGE + HEIGHT + 3 * THICKNESS);
+
 
             // draw legend
             var height = TOP_EDGE + HEIGHT + 15 + 6 * THICKNESS;

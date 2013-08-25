@@ -1,21 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace simulator
 {
-    // TODO: inputs in terms of time / minutes
-    //       convert simulator to integer math (t=0 at start, increment of 1)
-    //       values - increments a day (start with 24)/week/month, (first day increments - start with all day).
-    class IncrementalSimulator
+    class IncrementalSimulator : BackgroundWorker
     {
         private int _numDaysOfHourlies;
+        private double _minutesBetweenBackups;
+
         private Graphics _graphicsObj;
         private ImageChain _chain;
-        private DateTime _simulationStartTime;
 
         private Pen redPen = new Pen(Color.Red, THICKNESS);
         private Pen bluePen = new Pen(Color.Blue, THICKNESS);
@@ -26,60 +26,90 @@ namespace simulator
         private Brush brush = new SolidBrush(Color.Black);
 
         private static int LEFT_EDGE = 20;
-        private static int TOP_EDGE = 80;
-        private static int HEIGHT = 200;
+        private static int TOP_EDGE = 60;
+        private static int HEIGHT = 300;
         private static int WIDTH = 800;
         private static int THICKNESS = 4;
+        private static int GAP = 2;
 
-
-        internal ImageChain Simulate(Graphics graphicsObj, int numDaysOfHourlies)
+        internal IncrementalSimulator(Graphics graphicsObj, int numDaysOfHourlies, int numBackupsPerHour)
         {
             _graphicsObj = graphicsObj;
             _numDaysOfHourlies = numDaysOfHourlies;
+            _minutesBetweenBackups = 60 / numBackupsPerHour;
 
+            this.DoWork += Simulate;
+        }
+
+        internal void Simulate(object sender, DoWorkEventArgs e)
+        {
             DrawBackground();
 
             // initialize chain
             _chain = new ImageChain();
-            _simulationStartTime = _chain.First.Value.CreateTime;
+            DateTime startTime = _chain.First.Value.CreateTime;
+            DateTime previousTime = startTime;
+            DateTime currentTime = startTime;
 
-            DrawChain(_simulationStartTime, _simulationStartTime);
+            int i = 0;
+            while (true)
+            {
+                i++;
+                Thread.Sleep(200);
 
-            // TODO: invoke simulation on separate thread
-            return _chain;
-        }
+                if (this.CancellationPending)
+                    return;
 
-        private void DrawChain(DateTime previousTime, DateTime currentTime)
-        {
-            Pen redPen = new Pen(Color.Red, THICKNESS);
-            Pen clearPen = new Pen(Color.Transparent, THICKNESS);
-            
-            foreach( Image img in _chain) {
-                Rectangle oldDot = ComputeRectangleForImageFromTime(img, previousTime);
-                Rectangle newDot = ComputeRectangleForImageFromTime(img, currentTime);
-                
-                // clear previous dot
-                if (!oldDot.Equals(newDot))
+                DrawChain(startTime, currentTime);
+
+                previousTime = currentTime;
+                currentTime = currentTime.AddMinutes(_minutesBetweenBackups);
+
+                if (previousTime.Day != currentTime.Day)
                 {
-                    _graphicsObj.DrawEllipse(clearPen, oldDot);
+                    // TODO: do rollup
                 }
 
+                _chain.AddIncrementalImage(_minutesBetweenBackups);
+
+                if (i % 24 == 0)
+                {
+                    Console.WriteLine("too many iterations");
+                    return;
+                }
+            }
+        }
+
+        private void DrawChain(DateTime startTime, DateTime currentTime)
+        {           
+            foreach( Image img in _chain) {
+                Rectangle newDot = ComputeRectangleForImageFromTime(img, startTime);
+                
                 // draw current dot
                 if (img.Type == ImageType.Base)
                 {
                     _graphicsObj.DrawEllipse(redPen, newDot);
                 }
+                else if (img.Type == ImageType.Incremental)
+                {
+                    _graphicsObj.DrawEllipse(bluePen, newDot);
+                }
             }
         }
 
         // function to compute the location of the balls for backup images
-        // TODO: compare _simulationStartTime with img.CreateTime to figure out which row it is in
-        // TODO: add time parameter, so the same function can be used to hide balls as draw them.
-        private Rectangle ComputeRectangleForImageFromTime(Image img, DateTime time)
+        private Rectangle ComputeRectangleForImageFromTime(Image img, DateTime startTime)
         {
-            var rect = new Rectangle(
-                LEFT_EDGE + 4 * THICKNESS, TOP_EDGE + HEIGHT - 4 * THICKNESS,
-                THICKNESS, THICKNESS);
+            // locate first image's circle  
+            int left = LEFT_EDGE + 4 * THICKNESS;
+            int top = TOP_EDGE + HEIGHT - 4 * THICKNESS; 
+
+            // adjust for current image
+            var deltaTimeSpan = img.ModifiedTime - startTime;
+            int deltaCount = (int) (deltaTimeSpan.TotalMinutes / _minutesBetweenBackups);
+            top = top - (deltaCount * 2 * (THICKNESS + GAP));
+
+            var rect = new Rectangle(left, top, THICKNESS, THICKNESS);
             return rect;
         }
 
@@ -95,7 +125,7 @@ namespace simulator
             
             // label axis - "now"
             _graphicsObj.DrawString("now", font, brush, 
-                LEFT_EDGE - 2 * THICKNESS, 
+                LEFT_EDGE - 3 * THICKNESS, 
                 TOP_EDGE + HEIGHT + 3 * THICKNESS);
 
             // draw legend

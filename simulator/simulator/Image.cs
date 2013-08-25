@@ -41,12 +41,14 @@ namespace simulator
         {
             type = ImageType.Base;
             createTime = modifiedTime = DateTime.Now;
+            modifiedTime = createTime;
         }
 
         public Image(Image parent, double intervalMinutes)
         {
             type = ImageType.Incremental;
             createTime = parent.createTime.AddMinutes(intervalMinutes);
+            modifiedTime = createTime;
         }
     }
 }

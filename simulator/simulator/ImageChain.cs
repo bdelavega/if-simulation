@@ -12,7 +12,13 @@ namespace simulator
 
         public ImageChain()
         {
-            this.AddFirst(new LinkedListNode<Image>(new Image()));
+            AddFirst(new LinkedListNode<Image>(new Image()));
+        }
+
+        public void AddIncrementalImage(double intervalMinutes)
+        {
+            var img = new Image(this.First.Value, intervalMinutes);
+            AddFirst(new LinkedListNode<Image>(img));
         }
     }
 }

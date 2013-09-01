@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace simulator
 {
+    /// <summary>
+    /// volume image types as supported by AppAssure 5
+    /// </summary>
     enum ImageType
     {
         Base,
@@ -22,6 +25,9 @@ namespace simulator
             get { return type; }
             set { type = value; }
         }
+        
+        // for base and incremental images, createTime will be the same as modified
+        // for synthetic images, the createTime will be the oldest createTime
         private DateTime createTime;
 
         public DateTime CreateTime
@@ -29,6 +35,9 @@ namespace simulator
             get { return createTime; }
             set { createTime = value; }
         }
+
+        // for synthetic images, modifiedTime will be the newest createTime of the images
+        // synthesized
         private DateTime modifiedTime;
 
         public DateTime ModifiedTime

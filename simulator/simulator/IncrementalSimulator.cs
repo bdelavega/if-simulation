@@ -11,37 +11,47 @@ namespace simulator
 {
     class IncrementalSimulator : BackgroundWorker
     {
+        private const int LEFT_EDGE = 20;
+        private const int TOP_EDGE = 60;
+        private const int HEIGHT = 300;
+        private const int WIDTH = 800;
+        private const int THICKNESS = 4;
+        private const int GAP = 2;
+
+        private const int MAX_ROWS = 24;
+        private const int SIMULATION_TIME_MS = 300;
+
+        private const int MINUTES_PER_HOUR = 60;
+        private const int HOURS_PER_DAY = 24;
+
+        private readonly Pen redPen = new Pen(Color.Red, THICKNESS);
+        private readonly Pen bluePen = new Pen(Color.Blue, THICKNESS);
+        private readonly Pen greenPen = new Pen(Color.Green, THICKNESS);
+        private readonly Pen blackPen = new Pen(Color.Black, THICKNESS);
+        private readonly Pen clearPen = new Pen(Color.Transparent, THICKNESS);
+        private readonly Font font = new Font("Microsoft Sans Serif", 8.25f, FontStyle.Regular);
+        private readonly Brush brush = new SolidBrush(Color.Black);
+
+        private int _numDaysOfIncrementals;
         private int _numDaysOfHourlies;
         private double _minutesBetweenBackups;
         private int _columnsPerDay;
        
         private Graphics _graphicsObj;
         private ImageChain _chain;
-
-        private Pen redPen = new Pen(Color.Red, THICKNESS);
-        private Pen bluePen = new Pen(Color.Blue, THICKNESS);
-        private Pen greenPen = new Pen(Color.Green, THICKNESS);
-        private Pen blackPen = new Pen(Color.Black, THICKNESS);
-        private Pen clearPen = new Pen(Color.Transparent, THICKNESS);
-        private Font font = new Font("Microsoft Sans Serif", 8.25f, FontStyle.Regular);
-        private Brush brush = new SolidBrush(Color.Black);
-
-        private static int LEFT_EDGE = 20;
-        private static int TOP_EDGE = 60;
-        private static int HEIGHT = 300;
-        private static int WIDTH = 800;
-        private static int THICKNESS = 4;
-        private static int GAP = 2;
-
-        private static int MAX_ROWS = 24;
+        private LinkedList<RollupEpoch> _epochs;
 
 
-        internal IncrementalSimulator(Graphics graphicsObj, int numDaysOfHourlies, int numBackupsPerHour)
+        internal IncrementalSimulator(Graphics graphicsObj, int numDaysOfIncrementals, int numDaysOfHourlies, int numBackupsPerHour)
         {
             _graphicsObj = graphicsObj;
+            _numDaysOfIncrementals = numDaysOfIncrementals;
             _numDaysOfHourlies = numDaysOfHourlies;
-            _minutesBetweenBackups = 60 / numBackupsPerHour;
+            _minutesBetweenBackups = MINUTES_PER_HOUR / numBackupsPerHour;
             _columnsPerDay = numBackupsPerHour;  // since we show 24 in a column...
+
+            // initialize epoch list
+            _epochs = CreateEpochs();
 
             this.DoWork += Simulate;
         }
@@ -65,8 +75,8 @@ namespace simulator
                     return;
 
                 DrawImageDot(startTime, _chain.First.Value);
-                
-                Thread.Sleep(200);
+
+                Thread.Sleep(SIMULATION_TIME_MS);
 
                 if (this.CancellationPending)
                     return;
@@ -76,9 +86,7 @@ namespace simulator
 
                 if (previousTime.Day != currentTime.Day)
                 {
-                    // TODO: move lines over
-                    // TODO: do rollup
-                    Console.WriteLine("end of the day");
+                    Rollup(startTime, previousTime, currentTime);
                 }
 
                 _chain.AddIncrementalImage(_minutesBetweenBackups);
@@ -89,6 +97,72 @@ namespace simulator
                 }
             }
         }
+
+        private LinkedList<RollupEpoch> CreateEpochs()
+        {
+            var res = new LinkedList<RollupEpoch>();
+            
+            var re = new RollupEpoch();
+            re.DesiredTimeBetweenImages = MINUTES_PER_HOUR;
+            re.MaximumAgeInMinutes = (HOURS_PER_DAY * MINUTES_PER_HOUR) *
+                _numDaysOfIncrementals;
+            res.AddLast(re);
+
+            re = new RollupEpoch();
+            re.DesiredTimeBetweenImages = MINUTES_PER_HOUR;
+            re.MaximumAgeInMinutes = (HOURS_PER_DAY * MINUTES_PER_HOUR) *
+                (_numDaysOfHourlies + _numDaysOfIncrementals);
+            res.AddLast(re);
+
+            return res;
+        }
+
+        private void Rollup(DateTime startTime, DateTime previousTime, DateTime currentTime)
+        {
+            var curr = _chain.First;
+            var img = curr.Value;
+        
+            if (img.Type == ImageType.Base)
+            {
+                DrawImageDot(startTime, img);
+            }
+            else
+            {
+                throw new InvalidOperationException("the first image in the chain is not a base image");
+            }
+
+            curr = curr.Next;
+            if (curr == null)
+            {
+                ClearOneDayOfColumns();
+                return;
+            }
+
+            while (curr.Next != null)
+            {
+                var nxt = curr.Next;
+                
+                var currentAgeMins = currentTime.Subtract(img.ModifiedTime).Minutes;
+                var previousAgeMins = currentAgeMins - (MINUTES_PER_HOUR * HOURS_PER_DAY);
+
+                // check pairs for comparisson...
+                foreach (var epoch in _epochs)
+                {
+                    if (epoch.MaximumAgeInMinutes > previousAgeMins &&
+                        epoch.MaximumAgeInMinutes <= currentAgeMins)
+                    {
+                    }
+                }
+            }
+
+            ClearOneDayOfColumns();
+        }
+
+        private void ClearOneDayOfColumns()
+        {
+
+        }
+
 
         private void DrawChainDots(DateTime startTime, DateTime currentTime)
         {   

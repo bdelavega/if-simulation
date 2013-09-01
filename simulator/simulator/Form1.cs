@@ -26,10 +26,12 @@ namespace simulator
 
         private void button1_Click(object sender, EventArgs e)
         {
-            int numDays = (int) numDaysOfHourlies.Value;
-            int numBackups = (int) numBackupsPerHour.Value;
+            _sim = new IncrementalSimulator(
+                this.CreateGraphics(),
+                (int)numDaysOfHourlies.Value, 
+                (int)numDaysOfHourlies.Value,
+                (int)numBackupsPerHour.Value);
 
-            _sim = new IncrementalSimulator(this.CreateGraphics(), numDays, numBackups);
             _sim.WorkerSupportsCancellation = true;
             _sim.WorkerReportsProgress = false;
 
@@ -43,6 +45,16 @@ namespace simulator
         {
             if(_sim != null)
                 _sim.CancelAsync();
+        }
+
+        private void currentTime_ValueChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label3_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

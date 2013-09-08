@@ -28,7 +28,7 @@ namespace simulator
         private readonly Pen bluePen = new Pen(Color.Blue, THICKNESS);
         private readonly Pen greenPen = new Pen(Color.Green, THICKNESS);
         private readonly Pen blackPen = new Pen(Color.Black, THICKNESS);
-        private readonly Pen clearPen = new Pen(Color.Transparent, THICKNESS);
+        private readonly Pen clearPen = new Pen(SystemColors.Control, THICKNESS);
         private readonly Font font = new Font("Microsoft Sans Serif", 8.25f, FontStyle.Regular);
         private readonly Brush brush = new SolidBrush(Color.Black);
 
@@ -74,7 +74,7 @@ namespace simulator
                 if (this.CancellationPending)
                     return;
 
-                DrawImageDot(startTime, _chain.First.Value);
+                DrawImageDot(startTime, _chain.Last.Value);
 
                 Thread.Sleep(SIMULATION_TIME_MS);
 
@@ -119,7 +119,7 @@ namespace simulator
 
         private void Rollup(DateTime startTime, DateTime previousTime, DateTime currentTime)
         {
-            var curr = _chain.Last;
+            var curr = _chain.First;
             var img = curr.Value;
         
             if (img.Type == ImageType.Base)

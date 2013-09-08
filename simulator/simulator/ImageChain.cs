@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 namespace simulator
 {
+    // Linked list of volume images.  The first image is the base the simulation 
+    // starts with, therefore the oldest.  The last is the most recent incremental.
     class ImageChain : LinkedList<Image>
     {
         private const double intervalMinutes = 15;
@@ -17,8 +19,8 @@ namespace simulator
 
         public void AddIncrementalImage(double intervalMinutes)
         {
-            var img = new Image(this.First.Value, intervalMinutes);
-            AddFirst(new LinkedListNode<Image>(img));
+            var img = new Image(this.Last.Value, intervalMinutes);
+            AddLast(new LinkedListNode<Image>(img));
         }
     }
 }

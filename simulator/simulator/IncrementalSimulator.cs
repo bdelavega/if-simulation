@@ -28,7 +28,7 @@ namespace simulator
         private readonly Pen bluePen = new Pen(Color.Blue, THICKNESS);
         private readonly Pen greenPen = new Pen(Color.Green, THICKNESS);
         private readonly Pen blackPen = new Pen(Color.Black, THICKNESS);
-        private readonly Pen clearPen = new Pen(Color.Transparent, THICKNESS);
+        private Pen clearPen;
         private readonly Font font = new Font("Microsoft Sans Serif", 8.25f, FontStyle.Regular);
         private readonly Brush brush = new SolidBrush(Color.Black);
 
@@ -53,6 +53,7 @@ namespace simulator
             // initialize epoch list
             _epochs = CreateEpochs();
 
+            clearPen = new Pen(Color.Transparent, THICKNESS);
             this.DoWork += Simulate;
         }
 
@@ -119,7 +120,7 @@ namespace simulator
 
         private void Rollup(DateTime startTime, DateTime previousTime, DateTime currentTime)
         {
-            var curr = _chain.First;
+            var curr = _chain.Last;
             var img = curr.Value;
         
             if (img.Type == ImageType.Base)
@@ -131,18 +132,17 @@ namespace simulator
                 throw new InvalidOperationException("the first image in the chain is not a base image");
             }
 
-            curr = curr.Next;
             if (curr == null)
             {
-                ClearOneDayOfColumns();
+                ClearOneDayOfColumns(startTime);
                 return;
             }
 
-            while (curr.Next != null)
+            while (curr.Previous != null)
             {
-                var nxt = curr.Next;
+                var nxt = curr.Previous;
                 
-                var currentAgeMins = currentTime.Subtract(img.ModifiedTime).Minutes;
+                var currentAgeMins = currentTime.Subtract(img.ModifiedTime).TotalMinutes;
                 var previousAgeMins = currentAgeMins - (MINUTES_PER_HOUR * HOURS_PER_DAY);
 
                 // check pairs for comparisson...
@@ -153,14 +153,20 @@ namespace simulator
                     {
                     }
                 }
+
+                curr = nxt;
             }
 
-            ClearOneDayOfColumns();
+            ClearOneDayOfColumns(startTime);
         }
 
-        private void ClearOneDayOfColumns()
+        private void ClearOneDayOfColumns(DateTime startTime)
         {
-
+            foreach (Image img in _chain)
+            {
+                Rectangle newDot = ComputeRectangleForImageFromTime(img, startTime);
+                _graphicsObj.DrawEllipse(clearPen, newDot);
+            }
         }
 
 

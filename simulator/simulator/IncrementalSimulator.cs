@@ -28,7 +28,7 @@ namespace simulator
         private readonly Pen bluePen = new Pen(Color.Blue, THICKNESS);
         private readonly Pen greenPen = new Pen(Color.Green, THICKNESS);
         private readonly Pen blackPen = new Pen(Color.Black, THICKNESS);
-        private Pen clearPen;
+        private readonly Pen clearPen = new Pen(Color.Transparent, THICKNESS);
         private readonly Font font = new Font("Microsoft Sans Serif", 8.25f, FontStyle.Regular);
         private readonly Brush brush = new SolidBrush(Color.Black);
 
@@ -53,7 +53,6 @@ namespace simulator
             // initialize epoch list
             _epochs = CreateEpochs();
 
-            clearPen = new Pen(Color.Transparent, THICKNESS);
             this.DoWork += Simulate;
         }
 
